@@ -35,7 +35,7 @@ public class Bus implements Runnable{
     @SneakyThrows
     public static void BusRun(int busCount) {
         for (int i = 0; i < busCount; i++) {
-            new Thread(new Bus(i + 1)).start();//выезд автобусов через одну секунду
+            new Thread(new Bus(i + 1)).start();
             Thread.sleep(1000);
         }
     }
