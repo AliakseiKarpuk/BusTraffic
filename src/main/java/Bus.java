@@ -1,38 +1,63 @@
-import lombok.SneakyThrows;
+import org.apache.log4j.Logger;
 
-import java.util.Date;
-import java.util.concurrent.Semaphore;
+public class Bus extends Thread {
 
-public class Bus implements Runnable {
+    private static final Logger LOGGER = Logger.getLogger(Bus.class.getName());
+    private final BusStop busStop;
+    private BusStatus busStatus;
 
-    private int busNumber;
-    private static int countOnBusStop = 2;
-    public static final Semaphore semaphore = new Semaphore(countOnBusStop, true);
+    public Bus(BusStop busStop) {
+        this.busStop = busStop;
+        setBusStatus(BusStatus.NOT_BEHIND_BUS_STOP);
+    }
 
-    public Bus(int busNumber) {
-        this.busNumber = busNumber;
+    public BusStatus getBusStatus() {
+        return busStatus;
+    }
+
+    public void setBusStatus(BusStatus busStatus) {
+        this.busStatus = busStatus;
     }
 
     @Override
     public void run() {
         try {
-            semaphore.acquire();
-
-            System.out.println("Автобус №" + busNumber + " подъехал на остановку." + new Date().toString() + "\n");
-            Thread.sleep(3000);
-
+            checkBusStopSeats();
+            goToStop();
+            loadingPassengers();
+            leavingTheBusStop();
         } catch (InterruptedException e) {
-            throw new Error();
+            LOGGER.error("ERROR!", e);
+            Thread.currentThread().interrupt();
         }
-        semaphore.release();
-        System.out.println("Автобус №" + busNumber + " покинул остановку." + new Date().toString() + "\n");
     }
 
-    @SneakyThrows
-    public static void BusRun(int busCount) {
-        for (int i = 0; i < busCount; i++) {
-            new Thread(new Bus(i + 1)).start();
-            Thread.sleep(1000);
+    private void checkBusStopSeats() throws InterruptedException {
+        while (!busStop.comparisonOfNumberOfSeats()) {
+            LOGGER.info(Thread.currentThread().getId() + " the bus is waiting");
+            setBusStatus(BusStatus.WAITING_TO_GET_IN);
+
+            synchronized (busStop) {
+                busStop.wait();
+            }
         }
+    }
+
+    private void leavingTheBusStop() {
+        LOGGER.info(Thread.currentThread().getId() + " the bus left");
+        setBusStatus(BusStatus.LEFT_THE_STOP);
+        busStop.leave();
+    }
+
+    private void goToStop() throws InterruptedException {
+        LOGGER.info(Thread.currentThread().getId() + " the bus stopped at a stop");
+        setBusStatus(BusStatus.DROVE_TO_STOP);
+        sleep(1000);
+    }
+
+    public void loadingPassengers() throws InterruptedException {
+        setBusStatus(BusStatus.LOADING_PASSENGERS);
+        LOGGER.info(Thread.currentThread().getId() + " the bus is loading passengers");
+        sleep(2000);
     }
 }
